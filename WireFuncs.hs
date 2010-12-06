@@ -1,7 +1,7 @@
 module WireFuncs where
   import Graphics.Rendering.OpenGL
   import Graphics.UI.GLUT
-  import ArchElements
+  import ParseClash
   import LayoutManager
 
   type CoordD = (Double, Double)

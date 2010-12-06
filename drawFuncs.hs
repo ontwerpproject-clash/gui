@@ -5,9 +5,12 @@
 --------------------------------------------------------------------------------------------------------------
 import Graphics.Rendering.OpenGL
 import Graphics.UI.GLUT
-import ArchElements as AE
+-- import ArchElements as AE
 import LayoutManager as LM
 import WireFuncs 
+
+import ParseClash as AE
+
 sc = (1/3)
 
 
@@ -32,16 +35,17 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 display :: IO ()
 display = do
+    func <- parseClashFile "Plus1Case.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
-    drawElems [circuitOffset]
-    drawWires (extractWires circuitOffset) circuitOffset
+    drawElems [offsetElements func]
+    drawWires (extractWires $ offsetElements func) $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
-    renderPrimitive Points $ makeVertexes points 
+    renderPrimitive Points $ makeVertexes points
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
-            circuitOffset = offsetElements macc
+            -- circuitOffset = offsetElements func
 
 
 ---------------------------------------------------------------------------------------------------

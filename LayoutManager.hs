@@ -3,7 +3,7 @@ module LayoutManager where
     import Graphics.Rendering.OpenGL
     import Graphics.UI.GLUT
     import Data.List
-    import ArchElements as AE
+    import ParseClash as AE
 
     -- Type definitions
     type Offset = (Int, Int)
@@ -155,8 +155,8 @@ module LayoutManager where
 
     -- Get the Id attribute of a Port
     getPortID :: Port -> Id
-    getPortID (AE.Normal id) = id
-    getPortID (Tuple id _)   = id
+    getPortID (SinglePort id) = id
+    getPortID (MultiPort id _)   = id
 
     -- Extract the wires from the circuit description and return all the wires
     -- with their start- and end-offsets
@@ -182,8 +182,8 @@ module LayoutManager where
 
     -- Converts an OutPort to an Id
     toId :: Port -> Id
-    toId (AE.Normal id)  = id
-    toId (AE.Tuple id _) = id
+    toId (AE.SinglePort id)  = id
+    toId (AE.MultiPort id _) = id
 
     -- Returns the list of wires in a function
     getFunctionsAndWires :: ArchElem Offset -> ([ArchElem Offset], [Wire Offset])
