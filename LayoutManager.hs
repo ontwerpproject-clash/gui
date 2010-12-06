@@ -83,29 +83,54 @@ module LayoutManager where
 
     getElementCase :: ArchElem a -> [Wire a] -> [InPort] -> OutPort -> Int
     getElementCase element wires inports out
-        | isCase1 element wires inports = 1
-        | isCase3 element out wires     = 3
-        | otherwise                     = 2
+        | isCase1 element wires (map convertToPortId inports) = 1
+        | isCase3 element out wires                           = 3
+        | otherwise                                           = 2
+
+    convertToPortId :: InPort -> PortId
+    convertToPortId p = case p of
+        SinglePort id  -> id
+        MultiPort id _ -> id
+
+    convertPortToPortId :: Port -> PortId
+    convertPortToPortId p = case p of
+        SinglePort id  -> id
+        MultiPort id _ -> id
+
+    convertOutToPortId :: Out -> PortId
+    convertOutToPortId p = case p of
+        SinglePort id  -> id
+        MultiPort id _ -> id
 
     -- Case 1:
     -- Check wether the element has (a) wire(s) coming in from one of the inports
-    isCase1 :: ArchElem a -> [Wire a] -> [InPort] -> Bool
-    isCase1 element ws []     = False
-    isCase1 element ws (p:ps) 
-        | (includes (getPortID p) (getElementID element) ws) = True
-        | otherwise                                          = isCase1 element ws ps
+    isCase1 :: ArchElem a -> [Wire a] -> [PortId] -> Bool
+    isCase1 element ws ps = or $ map (includes ws) [(s, d) | s <- ps, d <- ePorts]
+                          where
+                              ePorts = getInPorts element
+
+    --isCase1 element ws []     = False
+    --isCase1 element ws (p:ps) 
+    --    | (includes (getPortID p) (getElementID element) ws) = True
+    --    | otherwise                                          = isCase1 element ws ps
 
     -- Case 3:
     -- Check wether the element has (a) wire(s) going out to the outport
-    isCase3 :: ArchElem a -> OutPort -> [Wire a] -> Bool
-    isCase3 element out ws = includes (getElementID element) (getPortID out) ws
+    isCase3 :: ArchElem a -> Port -> [Wire a] -> Bool
+    isCase3 element out ws = includes ws ((getOutPort element), convertPortToPortId out)
 
     -- Check wether there is a wire from src to dest
-    includes :: Id -> Id -> [Wire a] -> Bool
-    includes src dest []                     = False
-    includes src dest ((Wire name s d _):ws) = case (src==s && dest==d) of
+    includes :: [Wire a] -> (PortId, PortId) -> Bool
+    includes [] (src, dest)                  = False
+    includes ((Wire _ s d _):ws) (src, dest) = case (src==s && dest==d) of
         True  -> True
-        False -> includes src dest ws
+        False -> includes ws (src, dest)
+
+    --includes :: PortId -> [PortId] -> [Wire a] -> Bool
+    --includes src dests []                     = False
+    --includes src dests ((Wire name s d _):ws) = case (src==s && dest==d) of
+    --    True  -> True
+    --    False -> includes src dest ws
 
     -- Calculate the max x and y offsets
     -- In essence, this is the size of the circuit/function
@@ -145,13 +170,33 @@ module LayoutManager where
     isFunction _                      = False
 
     -- Get the Id attribute of an ArchElem Offset
-    -- TODO: make generic so that it works for ports and elements
     getElementID :: ArchElem a -> Id
     getElementID (Function id _ _ _ _ _) = id
     getElementID (Operator id _ _ _ _)   = id
     getElementID (Literal id _ _ _)      = id
     getElementID (Mux id _ _ _ _)        = id
     getElementID (Register id _ _ _)     = id
+
+    -- Get the list of InPorts from an element
+    getInPorts :: ArchElem a -> [In]
+    getInPorts (Function _ _ ins _ _ _) = map convertToPortId ins
+    getInPorts (Operator _ _ ins _ _)   = ins
+    getInPorts (Literal _ _ _ _)        = []
+    getInPorts (Mux _ ins _ _ _)        = ins
+    getInPorts (Register _ ins _ _)     = let (Just i) = ins
+                                          in case ins of
+        Nothing   -> []
+        otherwise -> [i]
+
+    -- Get the OutPort of an element
+    getOutPort :: ArchElem a -> PortId
+    getOutPort (Function _ _ _ out _ _) = case out of
+        SinglePort id  -> id
+        MultiPort id _ -> id
+    getOutPort (Operator _ _ _ out _)   = convertOutToPortId out
+    getOutPort (Literal _ _ out _)      = convertOutToPortId out
+    getOutPort (Mux _ _ out _ _)        = convertOutToPortId out
+    getOutPort (Register _ _ out _)     = convertOutToPortId out
 
     -- Get the Id attribute of a Port
     getPortID :: Port -> Id
