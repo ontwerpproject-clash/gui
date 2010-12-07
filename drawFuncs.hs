@@ -35,11 +35,12 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 display :: IO ()
 display = do
-    func <- parseClashFile "Plus1Case.hs"
+    func <- parseClashFile "Plus1.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     drawElems [offsetElements func]
-    drawWires (extractWires $ offsetElements func) $ offsetElements func
+    putStrLn (show $ calcRoutes (extractWires (offsetElements func)))
+    --drawWires (extractWires $ offsetElements func) $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
     flush
