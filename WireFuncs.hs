@@ -43,9 +43,14 @@ module WireFuncs where
           where 
               Wire _ _ _ (begin, end) = setInnerOffset wire
 
-  --resolveCollisions :: [Route] -> [Route]
-  --resolveCollisions []     = []
-  --resolveCollisions (r:rs) = 
+
+  -- Functions for detecting and resolving of wire collisions
+  --
+  -- 1. Find all colliding points
+  -- 2. (if they exist) make tuples of the form: (point, next point)
+  -- 3. see where the wires go to and based on that decide the offset
+  resolveCollisions :: [Route] -> [Route]
+  resolveCollisions 
 
   toFloats :: CoordD -> (GLfloat, GLfloat, GLfloat)
   toFloats (x, y) = ((realToFrac x)::GLfloat, (realToFrac y)::GLfloat, 0.0::GLfloat)
@@ -68,17 +73,11 @@ module WireFuncs where
                                                     True  -> route
                                                     False -> newP:route
 
-  --reduceXDist (finishX, finishY) route@((lastX,lastY):cs) =
-  --           (fromIntegral (floor finishX),lastY):route
-
   reduceYDist :: CoordD -> [CoordD] -> [CoordD]
   reduceYDist (_, finishY) route@((lastP):cs) = let newP = (fst lastP, fromIntegral (ceiling finishY))
                                                 in case (newP == lastP) of
                                                     True  -> route
                                                     False -> newP:route
-                                                    
-  --reduceYDist (finishX, finishY) route@((lastX,lastY):cs) =
-  --            (lastX, fromIntegral (ceiling finishY)):route
 
   wireFinish ::  CoordD -> [CoordD] -> [CoordD]
   wireFinish (finishX,finishY) route@((lastX,lastY):cs) =
