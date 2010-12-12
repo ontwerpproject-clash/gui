@@ -87,7 +87,6 @@ macc = Function
     ]
     ,[
        Wire (Just "wire1") "in" "newPortId0" ()
-      --,Wire (Just "wire2") "regOut" "newPortId1" ()--there is no regOut
       ,Wire (Just "wire3") "opOut" "regIn" ()
       ,Wire (Just "wire4") "opOut" "out" ()
     ]
@@ -107,7 +106,6 @@ maccCycle = Function
     ]
     ,[
        Wire (Just "wire1") "in" "newPortId0" ()
-      --,Wire (Just "wire2") "regOut" "newPortId1" ()--there is no regOut
       ,Wire (Just "wire3") "OpOut" "regIn" ()
 	  ,Wire (Just "wire3") "OpOut" "out" ()
 	  ,Wire (Just "wire4") "opOut" "newPortId0" ()
@@ -265,7 +263,7 @@ lp aElem begin end= do
 	let searchGraph = (makeEdges (makeVertices conversionList) [aElem] conversionList)
 	let lpath= longest (calcPathLengths searchGraph (remEmptyPaths (pathList searchGraph (idToNodeNr searchGraph begin) (idToNodeNr searchGraph end))))
 	idsToRealIDs (pathNrsToIds searchGraph lpath) conversionList
---noch das oben in longestpath ding werfen, weil das nur alle paths returnt
+
 
 ----------------------------------------- GRAPH CREATION -----------------------------------------
 makeEdges gV [macc] li = makeEdges1 gV [macc] li
@@ -305,18 +303,18 @@ toList1 []                                  				l = []
 
 ------------------------------------------ PATH FINDING ------------------------------------------
 
-pathList gr current end = pathHelper gr current end []--[current] --direct call of remEmptyPaths here?????
+pathList gr current end = pathHelper gr current end []
 
 forEvery [] 	gr current end visited = if(current==end) then [visited] else [[]]
 forEvery (s:ss) gr current end visited = do
-	let ret=pathHelper gr s end visited--current here useless
+	let ret=pathHelper gr s end visited
 	if(ss==[])then ret else ret++forEvery ss gr current end visited
 
---pathHelper gr current end []
-pathHelper gr current end visited = --do
+
+pathHelper gr current end visited =
 	if (current == end) then [visited++[current]] else if ( current `elem` visited) then [[]] else 
 		do
-			let ss=suc gr current  --lsuc = Node + (linkLabe==weight)
+			let ss=suc gr current  
 			forEvery ss gr current end (visited++[current])
 
 
@@ -329,8 +327,7 @@ remEmptyPaths (l:lists) = if (length l > 0) then l:(remEmptyPaths lists) else re
 
 --Calculate the lengt of all paths in the list (2nd parameter) and returns [(path length, path)]
 calcPathLengths gr []     = []
---calcPathLengths gr (p:ps) = [((length p),p)]:calcPathLengths gr ps{-[((calcLength gr p),p)]-}{-:calcPathLengths gr ps-}
-calcPathLengths gr (p:ps) = ((calcLength gr p),p):calcPathLengths gr ps{-[((calcLength gr p),p)]-}{-:calcPathLengths gr ps-}
+calcPathLengths gr (p:ps) = ((calcLength gr p),p):calcPathLengths gr ps
 
 
 --Helper function for calcPathLengths
@@ -339,7 +336,7 @@ calcLength gr (p:[]) = 0{-?-}
 calcLength gr (p:ps) = (calcLengthHelper gr p (head ps))+(calcLength gr ps)
 
 --Helper function for calcPathLengths
-calcLengthHelper gr p ps = edgeWeigth(labEdges gr) p ps --labEdges gr --besser labEdges als param von top statt immer zu berechnen heir
+calcLengthHelper gr p ps = edgeWeigth(labEdges gr) p ps
 
 
 
@@ -391,7 +388,7 @@ idToRealID id (l:ls) = if (id==idlist) then realid else idToRealID id ls
 --takes portId and list of (elementId, [ports])
 findElementOfPort:: String-> [(String,String,[String])]-> String
 findElementOfPort portId [] = []
-findElementOfPort portId (l:ls) = if (portId `elem` elems) then (i++(findElementOfPort portId ls)) else findElementOfPort portId ls--if (contains portId elems) then (i++(findElementOfPort portId ls)) else findElementOfPort portId ls
+findElementOfPort portId (l:ls) = if (portId `elem` elems) then (i++(findElementOfPort portId ls)) else findElementOfPort portId ls
 										where (i,i2, elems)=l
 
 
