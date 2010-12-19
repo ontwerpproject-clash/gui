@@ -38,9 +38,10 @@ display = do
     func <- parseClashFile "Plus1.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
+    putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
+    putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     drawElems [offsetElements func]
-    putStrLn (show $ calcRoutes (extractWires (offsetElements func)))
-    --drawWires (extractWires $ offsetElements func) $ offsetElements func
+    drawWires $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
     flush
@@ -54,10 +55,10 @@ display = do
 ---------------------------------------------------------------------------------------------------
 
 drawElems :: [ArchElem Offset] -> IO ()
-drawElems elems
+drawElems elems 
     | elems == [] = return ()
-    | otherwise   = do drawElem (head elems)
-                       drawElems (tail elems)
+    | otherwise   = do drawElem (head elems) 
+                       drawElems (tail elems) 
 
 drawElem :: ArchElem Offset -> IO ()
 drawElem (Function _ _ _ _ (innerElems , _ ) (x,y)) = do drawFunction innerElems (toOffset (x,y)) 
