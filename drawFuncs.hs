@@ -35,13 +35,13 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 display :: IO ()
 display = do
-    func <- parseClashFile "macc.hs"
+    func <- parseClashFile "Plus1.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
     putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     drawElems [offsetElements func]
-    drawWires $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
     flush
@@ -64,7 +64,7 @@ drawElem :: ArchElem Offset -> IO ()
 drawElem (Function _ _ _ _ (innerElems , _ ) (x,y)) = do drawFunction innerElems (toOffset (x,y)) 
                                                          drawElems innerElems
 drawElem (Operator _ name _ _ (x,y)) = drawOperator name (toOffset (x,y))
-drawElem (Literal _ _ _ (x,y))       = drawLiteral (toOffset (x,y))
+drawElem (Literal _ name _ (x,y))    = drawLiteral name (toOffset (x,y))
 drawElem (Mux _ _ _ _ (x,y))         = drawMux (toOffset (x,y))
 drawElem (Register _ _ _ (x,y))      = drawRegister (toOffset (x,y))
 
@@ -100,13 +100,27 @@ drawOperator name (x,y) = do   color $ Color3 1 0 (0::GLfloat)
                                loadIdentity
                                scale sc sc (1::GLfloat)
                                             
-drawLiteral :: Coord -> IO ()
-drawLiteral (x,y) = do color $ Color3 0 1 (0::GLfloat)
-                       rect (Vertex2 (x+0.4) (y-0.2)) (Vertex2 (x+0.6) ((y-0.8)::GLfloat))
+drawLiteral :: AE.Name -> Coord -> IO ()
+drawLiteral name (x,y) = do color $ Color3 0 1 (0::GLfloat)
+                            rect (Vertex2 (x+0.4) (y-0.2)) (Vertex2 (x+0.6) ((y-0.8)::GLfloat))
+                            loadIdentity
+                            let
+                                fact = realToFrac (length name)
+                                sca = (0.002*sc)/fact
+                            color $ Color3 0 0 (0::GLfloat)
+                            scale sca sca (1::GLfloat)
+                            translate (Vector3  ((x/sca*sc)+(0.45/sca*sc)+(0.01*fact/sca*sc)) 
+                                                 ((y/sca*sc)-(0.75/sca*sc)+(0.05*fact/sca*sc)) 
+                                                 (0::GLfloat))
+                            renderString Roman name
+                            loadIdentity
+                            scale sc sc (1::GLfloat)
 
 drawMux :: Coord -> IO ()
 drawMux (x,y) = do color $ Color3 1 0 (0::GLfloat)
                    rect (Vertex2 (x+0.2) (y-0.2)) (Vertex2 (x+0.8) ((y-0.8)::GLfloat))
+                   color $ Color3 0 0 (0::GLfloat)
+                   displayPoints [(x+0.1, y-0.5, 0), (x+0.5, y-0.5,0)] LineStrip
 
 drawRegister :: Coord -> IO ()
 drawRegister (x,y) = do  color $ Color3 0 1 (1::GLfloat)
