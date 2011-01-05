@@ -21,7 +21,7 @@ main = do
     let
         xS = 800
         yS = 800
-        xyScale = (800/800)     --lelijke hack, moet nog veranderd worden als datastructuur van layoutmanager bekend is
+        xyScale = (800/800)
     windowSize $= (Size xS yS)
     scale sc (sc*xyScale) (1::GLfloat)
     displayCallback $= display
@@ -35,7 +35,7 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 display :: IO ()
 display = do
-    func <- parseClashFile "Plus1.hs"
+    func <- parseClashFile "macc.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))

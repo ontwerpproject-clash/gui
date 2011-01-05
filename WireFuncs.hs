@@ -43,7 +43,7 @@ module WireFuncs where
   calcRoute wire = 
        wireFinish end $ reduceYDist end $ reduceXDist end $ toCrossing end $ wireStart begin
           where 
-              Wire _ _ _ (begin, end) = setInnerOffset wire
+              Wire _ _ _ (begin, end) = wire
 
   -- Function for simplifying Wires, merging points where necessary
   simplifyWires :: [Route] -> [Route]
@@ -145,12 +145,13 @@ module WireFuncs where
   {- Checks the Start- and End- elements & changes the offsets to proper ones; stub implementation sets it to 0.5, 0.5 (middle of element block)
    - a and b are used in conjunction with the elemList to determine what elements we're dealing with as starting/ending point and which inner
    - offset should be used as a result to let a wire end at the boundary of an element. -}
+{-
   setInnerOffset :: Wire FromTo -> Wire (CoordD, CoordD)
-  setInnerOffset (Wire name src dest ((xs,ys),(xf,yf))) = Wire name src dest (((fromIntegral xs)+0.7,
-                                                                                        -((fromIntegral ys)+0.5)),
-                                                                                       ((fromIntegral xf)+0.3,
-                                                                                        -((fromIntegral yf)+0.5)))
-                                           
+  setInnerOffset (Wire name src dest ((xs,ys),(xf,yf))) = Wire name src dest ((( xs)+0.7,
+                                                                                        -(( ys)+0.5)),
+                                                                                       (( xf)+0.3,
+                                                                                        -(( yf)+0.5)))
+  -}                                         
   displayPoints :: [(GLfloat,GLfloat,GLfloat)] -> PrimitiveMode -> IO ()
   displayPoints points primitiveShape = do
     renderAs primitiveShape points

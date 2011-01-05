@@ -7,7 +7,8 @@ module LayoutManager where
 
     -- Type definitions
     type Offset = (Int, Int)
-    type FromTo = (Offset, Offset)
+    type OffsetD = (Double, Double)
+    type FromTo = (OffsetD, OffsetD)
 
     -- These are the relative x- and y-offsets for all three columns for the elements within a function
     type RelOffsets = ((Int, Int), (Int, Int), (Int, Int))
@@ -17,6 +18,8 @@ module LayoutManager where
     -- Constants
     wireOffset :: Offset
     wireOffset = (-1, -1)
+    wireOffsetD :: OffsetD
+    wireOffsetD = (-1.0, -1.0)
 
     -- Order elements of a function and calculate the offsets
     --
@@ -139,7 +142,8 @@ module LayoutManager where
     calcFuncSize (f:fs) (x, y) = case (isFunction f) of
         True  -> calcFuncSize fs (max x x_, max y y_)
                  where
-                     (x_, y_) = calcFuncSize [f] (0, 0)
+                     (x_, y_) = calcFuncSize a (0, 0)
+                     (a,_,_,_) = getAttributes f
         False -> calcFuncSize fs (max x xf, max y yf)
                  where
                      (xf, yf) = getOffset f
@@ -209,21 +213,45 @@ module LayoutManager where
     extractWires c = let (ios, wires) = extractElementIdAndOffset [c] ([], [])
     				 in map (setFromTo ios) wires
 
-    -- Returns a list of all the function and element id's with the offset of the particular unit
-    extractElementIdAndOffset :: [ArchElem Offset] -> ([(Id, Offset)], [Wire Offset]) -> ([(Id, Offset)], [Wire Offset])
+-- Returns a list of all the function and element id's with the offset of the particular unit
+    extractElementIdAndOffset :: [ArchElem Offset] -> ([(Id, OffsetD)], [Wire Offset]) -> ([(Id, OffsetD)], [Wire Offset])
     extractElementIdAndOffset [] results       = results
     extractElementIdAndOffset (f:fs) (ios, ws) = let 
                                                       (Function id n ins out (functions, wires) o) = f
-                                                      list                                         = (id, o) : (toId out, o) : (map (combine o) ins)
-                                                      tuple                                        = (getElementID f, getOffset f)
+                                                      inoffs                                       = setInnerOffsets f
                                                       (a, b)                                       = extractElementIdAndOffset functions ([], [])
                                                   in case (isFunction f) of
-        True  -> extractElementIdAndOffset fs (a ++ list ++ ios, b ++ wires ++ ws)
-        False -> extractElementIdAndOffset fs ((tuple : ios), ws)
+        True  -> extractElementIdAndOffset fs (inoffs ++ a ++ ios, b ++ wires ++ ws)
+        False -> extractElementIdAndOffset fs (inoffs ++ ios, ws)
+
+    setInnerOffsets :: ArchElem Offset -> [(Id, OffsetD)]
+    setInnerOffsets f@(Function id _ ins out (a,b) o)   = (id,(x,y)) : (toId out, (maxX+0.5,-((y+maxY)/2))) : (map (combine (x-0.5,y-0.5)) ins)
+                                                      where
+                                                        (x,y)        = (fromIntegral $ fst o, fromIntegral $ snd o)
+                                                        fsf          = calcFuncSize a (0,0)
+                                                        (maxX, maxY) = (fromIntegral $ (fst fsf), fromIntegral $ (snd fsf))
+    setInnerOffsets (Operator id _ ins out o)     = [(id,(x,y)) , (combine (x+0.8,y-0.5) out) , (combine2 (x+0.22, y-0.4) ingang1) , (combine2 (x+0.22, y-0.6) ingang2)]
+                    where
+                        (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
+                        ingang1 = head ins
+                        ingang2 = head $ tail ins
+    setInnerOffsets (Literal id _ out o)          = [(id,(x,y)) , (combine (x+0.6,y-0.5) out)]
+                    where
+                        (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
+    setInnerOffsets (Mux id ins out inp o)        = [(id,(x,y))]
+                    where
+                        (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
+    setInnerOffsets (r@(Register id _ out o))     = (id,(x,y)) : (combine (x,y) out) : (map (combine2 (x,y)) (getInPorts r))
+                    where
+                        (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
 
     -- Combines a list of inports with the offset of the function
-    combine :: Offset -> Port -> (Id, Offset)
+    combine :: OffsetD -> Port -> (Id, OffsetD)
     combine o p = (toId p, o)
+
+    combine2 :: OffsetD -> In -> (Id, OffsetD)
+    combine2 o p = (p, o)
+
 
     -- Converts an OutPort to an Id
     toId :: Port -> Id
@@ -236,12 +264,12 @@ module LayoutManager where
     getFunctionsAndWires _                      = error "Not a function"
 
     -- Finds the starting and ending offset for a wire given the wire and a list of element ids and corresponing offsets
-    setFromTo :: [(Id, Offset)] -> Wire Offset -> Wire FromTo
+    setFromTo :: [(Id, OffsetD)] -> Wire Offset -> Wire FromTo
     setFromTo ios (Wire name from to offset) = Wire name from to (findById from ios, findById to ios)
 
     -- Returns the offset of the elements with id
-    findById :: Id -> [(Id, Offset)] -> Offset
-    findById id []           = wireOffset
+    findById :: Id -> [(Id, OffsetD)] -> OffsetD
+    findById id []           = wireOffsetD
     findById id ((i, o):ios)
     	| (i == id) = o
     	| otherwise = findById id ios
