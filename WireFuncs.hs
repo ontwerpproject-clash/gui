@@ -68,6 +68,15 @@ module WireFuncs where
   -- 1. Find all colliding points
   -- 2. (if they exist) make tuples of the form: (point, next point)
   -- 3. see where the wires go to and based on that decide the offset
+  
+  makeArrows :: [Route] -> [Route]
+  makeArrows routes = map makeArrow routes
+                      
+  makeArrow :: Route -> Route
+  makeArrow route = newRoute
+                  where
+                    (finishX,finishY) = head route
+                    newRoute          = (finishX-0.05,finishY-0.05):(finishX,finishY):(finishX-0.05,finishY+0.05):route
 
   resolveCollisions :: [Route] -> [Route]
   resolveCollisions routes 

@@ -182,15 +182,15 @@ module LayoutManager where
     getElementID (Register id _ _ _)     = id
 
     -- Get the list of InPorts from an element
-    getInPorts :: ArchElem a -> [In]
+    getInPorts :: ArchElem a -> [PortId]
     getInPorts (Function _ _ ins _ _ _) = map convertToPortId ins
-    getInPorts (Operator _ _ ins _ _)   = ins
+    getInPorts (Operator _ _ ins _ _)   = map convertPortToPortId ins
     getInPorts (Literal _ _ _ _)        = []
-    getInPorts (Mux _ ins _ _ _)        = ins
+    getInPorts (Mux _ ins _ _ _)        = map convertPortToPortId ins
     getInPorts (Register _ ins _ _)     = let (Just i) = ins
                                           in case ins of
         Nothing   -> []
-        otherwise -> [i]
+        otherwise -> [convertPortToPortId i]
 
     -- Get the OutPort of an element
     getOutPort :: ArchElem a -> PortId
@@ -233,23 +233,34 @@ module LayoutManager where
     setInnerOffsets (Operator id _ ins out o)     = [(id,(x,y)) , (combine (x+0.8,y-0.5) out) , (combine2 (x+0.22, y-0.4) ingang1) , (combine2 (x+0.22, y-0.6) ingang2)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
-                        ingang1 = head ins
-                        ingang2 = head $ tail ins
+                        ingang1 = convertPortToPortId $ head ins
+                        ingang2 = convertPortToPortId $ head $ tail ins
     setInnerOffsets (Literal id _ out o)          = [(id,(x,y)) , (combine (x+0.6,y-0.5) out)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
-    setInnerOffsets (Mux id ins out inp o)        = [(id,(x,y))]
+    setInnerOffsets (Mux id ins out sels o)        = ((id,(x,y)):newIns)++((combine (x+0.8,y-0.5) out):newSels)
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
-    setInnerOffsets (r@(Register id _ out o))     = (id,(x,y)) : (combine (x,y) out) : (map (combine2 (x,y)) (getInPorts r))
+                        step    = 0.3 / (fromIntegral ((length ins) + 1))
+                        step2   = 0.3 / (fromIntegral ((length sels) + 1))
+                        newIns  = divideWires (map convertPortToPortId ins) (0.2, 0.2 - step) step []
+                        newSels = divideWires (map convertPortToPortId sels) (0.2, 0.5 - step2) step2 []
+
+    setInnerOffsets (r@(Register id _ out o))     = (id,(x,y)) : (combine (x+0.7,y-0.5) out) : (map (combine2 (x+0.3,y-0.5)) (getInPorts r))
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
+    
+    -- Help function for setInnerOffsets, used to calculate at which point wires should intersect with the element.
+    -- First argument is a list of Ids, the second a length over which they have to be divided, and the 3rd a starting value.
+    divideWires :: [Id] -> OffsetD -> Double -> [(Id, OffsetD)] -> [(Id, OffsetD)]
+    divideWires [] _ _ r             = r
+    divideWires (z:zs) (x, y) step r = divideWires zs (x, y - step) step ((z, (x, y)):r)
 
     -- Combines a list of inports with the offset of the function
     combine :: OffsetD -> Port -> (Id, OffsetD)
     combine o p = (toId p, o)
 
-    combine2 :: OffsetD -> In -> (Id, OffsetD)
+    combine2 :: OffsetD -> PortId -> (Id, OffsetD)
     combine2 o p = (p, o)
 
 
