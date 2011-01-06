@@ -28,24 +28,25 @@ module WireFuncs where
   -}
   drawWire :: Route -> IO ()
   drawWire route = 
-        do  color $ Color3 0 0 (1::GLfloat)
+        do  --color $ Color3 0 0 (1::GLfloat)
             displayPoints points LineStrip     
              where 
               points = [(toFloats r) | r <- route]
 
-
+  drawHelper wires red = drawWires2 wires red 1
 --same as drawWire except for the different color  
-  drawWires2 :: [Route] -> IO ()
-  drawWires2 wires =
+  drawWires2 :: [Route] -> [Int] -> Int -> IO ()
+  drawWires2 wires red curr= do
+       if ( containsInt red curr) then color $ Color3 1 0 (0::GLfloat) else color $ Color3 0 0 (1::GLfloat)
        if (wires /= [])
-          then do drawWire2 (head wires)
-                  drawWires2 (tail wires)
+          then do drawWire2 (head wires) 
+                  drawWires2 (tail wires) red (curr+1)
           else return ()
 
 
   drawWire2 :: Route -> IO ()
   drawWire2 route = 
-        do  color $ Color3 1 0 (0::GLfloat)
+        do  --color $ Color3 1 0 (0::GLfloat)
             displayPoints points LineStrip     
              where 
               points = [(toFloats r) | r <- route]
@@ -211,11 +212,18 @@ module WireFuncs where
   removeWires []      path list  = []
   removeWires (a:all) path list  = if(containsWire path a list ) then a:(removeWires all path list) else (removeWires all path list ) --a--(containsWire path a list )--if(containsWire path a list ) then a:(removeWires all path list ) else removeWires all path list 
 
+  containsInt []       value = False
+  containsInt (l:list) value = if (l==value) then True else containsInt list value
 
   containsWire []        wire list = False
   containsWire (w:wires) wire list = if (equalsWire w wire list ) then True else containsWire wires wire list 
 
   equalsWire (Wire _ w1in w1out _) (Wire _ w2in w2out _) list = if ((portToElementId w2in list) == w1in && (portToElementId w2out list)==w1out) then True else False
+
+  containsWire2 []        wire = False
+  containsWire2 (w:wires) wire = if (equalsWire2 w wire ) then True else containsWire2 wires wire 
+
+  equalsWire2 (Wire _ w1in w1out _) (Wire _ w2in w2out _) = if (w2in == w1in && w2out==w1out) then True else False
 
   portToElementId wirePort [] = []
   portToElementId wirePort ((id,ports):elementList) = if (contains wirePort ports) then id else  portToElementId wirePort elementList--((id,id2,ports):elementList)
@@ -223,7 +231,11 @@ module WireFuncs where
   contains port []       = False
   contains port (l:list) = if ( port == l) then True else contains port list
 
+  remPath []        path = []
+  remPath (w:wires) path = if (containsWire2 path w) then remPath wires path else w:(remPath wires path)
 
-
-	
+  pathToPositions wires wiresToPaint = pathToPositionsHelper wires wiresToPaint 1 
+  
+  pathToPositionsHelper [] wiresToPaint currentElement = []
+  pathToPositionsHelper (w:wires) wiresToPaint currentElement = if (containsWire2 wiresToPaint w) then currentElement:(pathToPositionsHelper wires wiresToPaint (currentElement+1)) else pathToPositionsHelper wires wiresToPaint (currentElement+1)
 	

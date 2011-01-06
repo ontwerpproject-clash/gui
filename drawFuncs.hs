@@ -44,6 +44,7 @@ display = do
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
     putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     drawElems [offsetElements func]
+    color $ Color3 0 0 (1::GLfloat)
     drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
@@ -63,15 +64,18 @@ keyboard func (Char 'r') Down _ _   = do
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     drawElems [offsetElements func]
+    color $ Color3 0 0 (1::GLfloat)
     drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
-    color $ Color3 0 1 (0::GLfloat)
+    --color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
+    print (resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func)
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
 
 
 keyboard func (Char 'l') Down _ _   = do 
+	print "longestPath"
 	--longestPath
 	let path = (makeWiresH $ lp1 func)
 	--allWires
@@ -79,8 +83,24 @@ keyboard func (Char 'l') Down _ _   = do
 	--conversion step, because the result of longestpath, is a path based on the elementNames instead of the portIds (has to be changed)
 	--result is the longesPath with portIds instead of ElementIds
 	let wiresToPaint = removeWires wires path (toList2 func)
-	--paint path in red
-	drawWires2 $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
+	--wires of the longestPath to their position in the wire list
+	let wiresOfPath = (pathToPositions wires wiresToPaint)
+	--calculateWires
+	let completeWires = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wires
+	--paint the wires (the wires on the positions in the list wiresOfPath are drawn in red)
+	drawHelper completeWires wiresOfPath
+	
+keyboard func (Char 'p') Down _ _   = do 	
+	--longestPathBackupVersion
+	let path = (makeWiresH $ lp1 func)
+	--allWires
+	let wires = extractWires $ offsetElements func
+
+	let wiresToPaint = removeWires wires path (toList2 func)
+	let wiresOfPath = (pathToPositions wires wiresToPaint)
+	color $ Color3 1 0 (0::GLfloat)
+	--draws all the wires of the longest Path in red (but just those, so it is probably not on top of all the others old wires)
+	drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
 	
 keyboard func _ _ _ _               = return ()	
 	
