@@ -7,7 +7,9 @@ import Graphics.Rendering.OpenGL
 import Graphics.UI.GLUT
 -- import ArchElements as AE
 import LayoutManager as LM
-import WireFuncs 
+import WireFuncs
+import System.Exit ( exitWith, ExitCode(ExitSuccess) )
+import LongestPath
 
 import ParseClash as AE
 
@@ -25,6 +27,7 @@ main = do
     windowSize $= (Size xS yS)
     scale sc (sc*xyScale) (1::GLfloat)
     displayCallback $= display
+    --keyboardMouseCallback $= (Just ( keyboard1 ))
     mainLoop
  
 type Coord = (GLfloat, GLfloat)
@@ -44,11 +47,56 @@ display = do
     drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
+    keyboardMouseCallback $= (Just ( keyboard func))
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
             -- circuitOffset = offsetElements func
 
+
+
+
+keyboard func (Char '\27') Down _ _ = exitWith ExitSuccess  --press "esc" to quit
+keyboard func (Char '+') Down _ _   = print "zoom in"
+keyboard func (Char '-') Down _ _   = print "zoom out"
+keyboard func (Char 'r') Down _ _   = do
+    clear [ColorBuffer]
+    color $ Color3 1 1 (1::GLfloat)
+    drawElems [offsetElements func]
+    drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    color $ Color3 0 1 (0::GLfloat)
+    renderPrimitive Points $ makeVertexes points
+    flush
+        where
+            points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
+
+
+keyboard func (Char 'l') Down _ _   = do 
+	--longestPath
+	let path = (makeWiresH $ lp1 func)
+	--allWires
+	let wires = extractWires $ offsetElements func
+	--conversion step, because the result of longestpath, is a path based on the elementNames instead of the portIds (has to be changed)
+	--result is the longesPath with portIds instead of ElementIds
+	let wiresToPaint = removeWires wires path (toList2 func)
+	--paint path in red
+	drawWires2 $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
+	
+keyboard func _ _ _ _               = return ()	
+	
+
+
+
+	
+	
+	
+	
+
+
+keyboard1 (Char '\27') Down _ _ = exitWith ExitSuccess  --press "esc" to quit
+keyboard1 (Char '+') Down _ _   = print "zoom in"
+keyboard1 (Char '-') Down _ _   = print "zoom out"
+keyboard1 _ _ _ _               = return ()
 
 ---------------------------------------------------------------------------------------------------
 -- Functions directing the atomic draw operations given a list of elements with absolute offsets --
