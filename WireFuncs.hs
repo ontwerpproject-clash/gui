@@ -33,6 +33,27 @@ module WireFuncs where
              where 
               points = [(toFloats r) | r <- route]
 
+
+--same as drawWire except for the different color  
+  drawWires2 :: [Route] -> IO ()
+  drawWires2 wires =
+       if (wires /= [])
+          then do drawWire2 (head wires)
+                  drawWires2 (tail wires)
+          else return ()
+
+
+  drawWire2 :: Route -> IO ()
+  drawWire2 route = 
+        do  color $ Color3 1 0 (0::GLfloat)
+            displayPoints points LineStrip     
+             where 
+              points = [(toFloats r) | r <- route]
+
+
+
+
+
   {-Function converting a list of Wires into a list of Routes. -}
   calcRoutes :: [Wire FromTo] -> [Route] 
   calcRoutes wires 
@@ -171,3 +192,38 @@ module WireFuncs where
 
   makeVertexes :: [(GLfloat, GLfloat,GLfloat)] -> IO ()
   makeVertexes = mapM_ (\(x,y,z)->vertex $ Vertex3 x y z)
+  
+  
+  
+  
+  
+  
+  makeWires [] start           = []
+  makeWires (element:es) start = (Wire (Just "") start element 1):(makeWires es element)
+
+  makeWiresH e = makeWires (tail e) (head e)
+	{-
+	removeWires :: [Wire FromTo]-> [Wire FromTo] -> [(String, String, [String])]->[Wire FromTo]->[Wire FromTo ]
+	removeWires []      path list wires = wires
+	removeWires (a:all) path list wires = if(containsWire path a list ) then (removeWires all path list (a:wires)) else (removeWires all path list wires) --a--(containsWire path a list )--if(containsWire path a list ) then a:(removeWires all path list ) else removeWires all path list 
+	-}
+	--removeWires :: [Wire FromTo]-> [Wire FromTo] -> [(String, String, [String])]->[Wire FromTo]->[Wire FromTo ]
+  removeWires []      path list  = []
+  removeWires (a:all) path list  = if(containsWire path a list ) then a:(removeWires all path list) else (removeWires all path list ) --a--(containsWire path a list )--if(containsWire path a list ) then a:(removeWires all path list ) else removeWires all path list 
+
+
+  containsWire []        wire list = False
+  containsWire (w:wires) wire list = if (equalsWire w wire list ) then True else containsWire wires wire list 
+
+  equalsWire (Wire _ w1in w1out _) (Wire _ w2in w2out _) list = if ((portToElementId w2in list) == w1in && (portToElementId w2out list)==w1out) then True else False
+
+  portToElementId wirePort [] = []
+  portToElementId wirePort ((id,ports):elementList) = if (contains wirePort ports) then id else  portToElementId wirePort elementList--((id,id2,ports):elementList)
+
+  contains port []       = False
+  contains port (l:list) = if ( port == l) then True else contains port list
+
+
+
+	
+	
