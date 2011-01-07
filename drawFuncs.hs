@@ -77,7 +77,7 @@ keyboard func (Char 'r') Down _ _   = do
 keyboard func (Char 'l') Down _ _   = do 
 	print "longestPath"
 	--longestPath
-	let path = (makeWiresH $ lp1 func)
+	let path = (makeWiresH $ lp2 func){-lp1 here calculates longest path from begining of the function to end of the function, lp2 calculates longestPaht from somewhere in the function to its end-}
 	--allWires
 	let wires = extractWires $ offsetElements func
 	--conversion step, because the result of longestpath, is a path based on the elementNames instead of the portIds (has to be changed)
@@ -92,7 +92,7 @@ keyboard func (Char 'l') Down _ _   = do
 	
 keyboard func (Char 'p') Down _ _   = do 	
 	--longestPathBackupVersion
-	let path = (makeWiresH $ lp1 func)
+	let path = (makeWiresH $ lp2 func){-lp1 here calculates longest path from begining of the function to end of the function, lp2 calculates longestPaht from somewhere in the function to its end-}
 	--allWires
 	let wires = extractWires $ offsetElements func
 
