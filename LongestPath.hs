@@ -12,6 +12,25 @@ lp1 aElem = do
 	--conversionList
 --		where
 --			(a,b,c) = start
+
+
+
+
+lp2 aElem = do
+	let conversionList = (toList aElem)
+	let func=head  conversionList
+	let (a,b,c) = func
+	let allLongestPaths= allLPS aElem (elements aElem) (a++"_funcOut")
+	let lP = longP allLongestPaths
+	if (lP>0) then allLongestPaths!!lP else []
+
+allLPS aElem []        end = []
+allLPS aElem (e:elems) end = (lp aElem e end):(allLPS aElem elems end)
+
+longP l = longPHelper l 0 0 0
+
+longPHelper [] curElement longest lengthLongest = longest
+longPHelper (l:list) curElement longest lengthLongest =  if (length l>=lengthLongest) then longPHelper list (curElement+1) curElement (length l) else longPHelper list (curElement+1) longest lengthLongest
 		
 ----------------------------------------- MAIN FUNCTION ------------------------------------------
 --call is not that efficient, couple of things are computed multiple times, change to do and everything that is computed multiple times in a let
@@ -50,23 +69,31 @@ makeVertices1 (l:ls) gr = makeVertices1 ls (run_ gr $ insMapNodeM eleID)
 --converts a archelem to a list of the form (id_elem, real_id_elem, [ports])
 --id_function is used to be able to split a function into an in- and outpart, to not have a cycle due to all functions starting and ending with the function itself
 toList func = toList1 [func] []
-toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, map convertToPortId ins):(id++"_funcOut",id, fromOutToString out):toList1 fs l  {-++("_out", fromOutToString out)-}
-toList1 ((Operator id name insf out a):fs)  				l	= (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l  {-map convertToPortId insf war insf-}
+toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, map convertToPortId ins):(id++"_funcOut",id, fromOutToString out):toList1 fs l  
+toList1 ((Operator id name insf out a):fs)  				l	= (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l 
 toList1 ((Literal id val out a):fs)         				l	= (id,id, fromOutToString out):toList1 fs l
-toList1 ((Mux id insf out inpf a):fs)      					l = (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l {-map convertToPortId insf war insf-}
-toList1 ((Register id insf out a):fs)       				l = (id,id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList1 fs l  {-[(convertToPortId(head (fMay insf)))] war fMay insf    pretty dirty hack wegen fmay liste zurück etc.-}
+toList1 ((Mux id insf out inpf a):fs)      					l = (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l
+toList1 ((Register id insf out a):fs)       				l = (id,id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList1 fs l  
 toList1 []                                  				l = []
 
 
 
 
 toList2 func = toList12 [func] []
-toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, map convertToPortId ins):(id, fromOutToString out):toList12 fs l  {-++("_out", fromOutToString out)-}
-toList12 ((Operator id name insf out a):fs)  			  	l	= (id, fromOutToString out++map convertToPortId insf):toList12 fs l  {-map convertToPortId insf war insf-}
+toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, map convertToPortId ins):(id, fromOutToString out):toList12 fs l  
+toList12 ((Operator id name insf out a):fs)  			  	l	= (id, fromOutToString out++map convertToPortId insf):toList12 fs l  
 toList12 ((Literal id val out a):fs)         			  	l	= (id, fromOutToString out):toList12 fs l
-toList12 ((Mux id insf out inpf a):fs)      					l = (id, fromOutToString out++map convertToPortId insf):toList12 fs l {-map convertToPortId insf war insf-}
-toList12 ((Register id insf out a):fs)       			  	l = (id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList12 fs l  {-[(convertToPortId(head (fMay insf)))] war fMay insf    pretty dirty hack wegen fmay liste zurück etc.-}
+toList12 ((Mux id insf out inpf a):fs)      					l = (id, fromOutToString out++map convertToPortId insf):toList12 fs l
+toList12 ((Register id insf out a):fs)       			  	l = (id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList12 fs l 
 toList12 []                                  		  		l = []
+
+elements func = elems1 [func] []
+elems1 ((Function id name ins out (fs, ws) a):es)   l = (id):elems1 fs l  
+elems1 ((Operator id name insf out a):fs)  			  	l	= (id):elems1 fs l  
+elems1 ((Literal id val out a):fs)         			  	l	= (id):elems1 fs l
+elems1 ((Mux id insf out inpf a):fs)      					l = (id):elems1 fs l 
+elems1 ((Register id insf out a):fs)       			  	l = (id):elems1 fs l  
+elems1 []                                  		  		l = []
 
 ------------------------------------------ PATH FINDING ------------------------------------------
 
