@@ -243,8 +243,8 @@ module LayoutManager where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
                         step    = 0.3 / (fromIntegral ((length ins) + 1))
                         step2   = 0.3 / (fromIntegral ((length sels) + 1))
-                        newIns  = divideWires (map convertPortToPortId ins) (0.2, 0.2 - step) step []
-                        newSels = divideWires (map convertPortToPortId sels) (0.2, 0.5 - step2) step2 []
+                        newIns  = divideWires (map convertPortToPortId ins) (x+0.2, - y - 0.2 - step) step []
+                        newSels = divideWires (map convertPortToPortId sels) (x+0.2, - y - 0.5 - step2) step2 []
 
     setInnerOffsets (r@(Register id _ out o))     = (id,(x,-y)) : (combine (x+0.7,-y-0.5) out) : (map (combine2 (x+0.3,-y-0.5)) (getInPorts r))
                     where
