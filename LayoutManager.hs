@@ -186,7 +186,7 @@ module LayoutManager where
     getInPorts (Function _ _ ins _ _ _) = map convertToPortId ins
     getInPorts (Operator _ _ ins _ _)   = map convertPortToPortId ins
     getInPorts (Literal _ _ _ _)        = []
-    getInPorts (Mux _ ins _ _ _)        = map convertPortToPortId ins
+    getInPorts (Mux _ ins _ sels _)     = (map convertPortToPortId ins) ++ (map convertPortToPortId sels)
     getInPorts (Register _ ins _ _)     = let (Just i) = ins
                                           in case ins of
         Nothing   -> []
@@ -225,20 +225,20 @@ module LayoutManager where
         False -> extractElementIdAndOffset fs (inoffs ++ ios, ws)
 
     setInnerOffsets :: ArchElem Offset -> [(Id, OffsetD)]
-    setInnerOffsets f@(Function id _ ins out (a,b) o)   = (id,(x,y)) : (toId out, (maxX+0.5,-((y+maxY)/2))) : (map (combine (x-0.5,y-0.5)) ins)
+    setInnerOffsets f@(Function id _ ins out (a,b) o)   = (id,(x,-y)) : (toId out, (maxX+0.5,-((y+maxY)/2))) : (map (combine (x-0.5,-y-0.5)) ins)
                                                       where
                                                         (x,y)        = (fromIntegral $ fst o, fromIntegral $ snd o)
                                                         fsf          = calcFuncSize a (0,0)
                                                         (maxX, maxY) = (fromIntegral $ (fst fsf), fromIntegral $ (snd fsf))
-    setInnerOffsets (Operator id _ ins out o)     = [(id,(x,y)) , (combine (x+0.8,y-0.5) out) , (combine2 (x+0.22, y-0.4) ingang1) , (combine2 (x+0.22, y-0.6) ingang2)]
+    setInnerOffsets (Operator id _ ins out o)     = [(id,(x,-y)) , (combine (x+0.8,-y-0.5) out) , (combine2 (x+0.22, -y-0.4) ingang1) , (combine2 (x+0.22, -y-0.6) ingang2)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
                         ingang1 = convertPortToPortId $ head ins
                         ingang2 = convertPortToPortId $ head $ tail ins
-    setInnerOffsets (Literal id _ out o)          = [(id,(x,y)) , (combine (x+0.6,y-0.5) out)]
+    setInnerOffsets (Literal id _ out o)          = [(id,(x,-y)) , (combine (x+0.6,-y-0.5) out)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
-    setInnerOffsets (Mux id ins out sels o)        = ((id,(x,y)):newIns)++((combine (x+0.8,y-0.5) out):newSels)
+    setInnerOffsets (Mux id ins out sels o)        = ((id,(x,-y)):newIns)++((combine (x+0.8,-y-0.5) out):newSels)
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
                         step    = 0.3 / (fromIntegral ((length ins) + 1))
@@ -246,7 +246,7 @@ module LayoutManager where
                         newIns  = divideWires (map convertPortToPortId ins) (0.2, 0.2 - step) step []
                         newSels = divideWires (map convertPortToPortId sels) (0.2, 0.5 - step2) step2 []
 
-    setInnerOffsets (r@(Register id _ out o))     = (id,(x,y)) : (combine (x+0.7,y-0.5) out) : (map (combine2 (x+0.3,y-0.5)) (getInPorts r))
+    setInnerOffsets (r@(Register id _ out o))     = (id,(x,-y)) : (combine (x+0.7,-y-0.5) out) : (map (combine2 (x+0.3,-y-0.5)) (getInPorts r))
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
     

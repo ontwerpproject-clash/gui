@@ -43,7 +43,7 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 display :: ProgramState -> IO ()
 display pState = do
-    func <- parseClashFile "Plus1.hs"
+    func <- parseClashFile "muxTest.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
