@@ -10,6 +10,7 @@ import LayoutManager as LM
 import WireFuncs
 import System.Exit ( exitWith, ExitCode(ExitSuccess) )
 import LongestPath
+import System (getArgs)
 
 import ParseClash as AE
 
@@ -27,7 +28,8 @@ main = do
     let
       pState = initPState
       xyScale =  1
-    func <- parseClashFile "muxTest.hs"
+    filename : _ <- getArgs
+    func <- parseClashFile filename
     getArgsAndInitialize
     createWindow "CLASH Visualisation Tool, pre-alpha"
     windowSize $= (Size (xWS pState) (yWS pState))
