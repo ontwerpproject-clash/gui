@@ -31,7 +31,8 @@ main = do
     createWindow "CLASH Visualisation Tool, pre-alpha"
     windowSize $= (Size (xWS pState) (yWS pState))
     scale (realToFrac $ sc pState) (realToFrac $ sc pState) (1::GLfloat)
-    displayCallback $= display pState
+    func <- parseClashFile "Plus1.hs"--"muxTest.hs"
+    displayCallback $= display pState func
 --    keyboardMouseCallback $= (Just ( keyboard1 ))
     mainLoop
  
@@ -41,9 +42,9 @@ type Coord = (GLfloat, GLfloat)
 -- Main Display function. Does the following: Clear the screen, set the color to white, calculate the grid, set the scale --
 -- of the grid to proper levels, draw the elements and commit to the screen (flush).                                      --
 ----------------------------------------------------------------------------------------------------------------------------
-display :: ProgramState -> IO ()
-display pState = do
-    func <- parseClashFile "muxTest.hs"
+--display :: ProgramState -> IO ()
+display pState func = do
+    --func <- parseClashFile "Plus1.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
@@ -63,7 +64,7 @@ display pState = do
 keyboard func pState (Char '\27') Down _ _ = exitWith ExitSuccess  --press "esc" to quit
 keyboard func pState (Char '+') Down _ _   = do 
     print "zoom in"
-    displayCallback $= display newPState
+    displayCallback $= display newPState func
     postRedisplay Nothing
     where
       sc_ = sc pState
@@ -72,7 +73,7 @@ keyboard func pState (Char '+') Down _ _   = do
     
 keyboard func pState (Char '-') Down _ _   = do 
     print "zoom out"
-    displayCallback $= display newPState
+    displayCallback $= display newPState func
     postRedisplay Nothing
     where
       sc_ = sc pState
@@ -130,7 +131,7 @@ keyboard func pState _ _ _ _               = return ()
 	
 	
 	
-
+{-
 
 keyboard1 (Char '\27') Down _ _ = exitWith ExitSuccess  --press "esc" to quit
 keyboard1 (Char '+') Down _ _   = do print "zoom in"
@@ -141,7 +142,7 @@ keyboard1 (Char '+') Down _ _   = do print "zoom in"
     
 keyboard1 (Char '-') Down _ _   = print "zoom out"
 keyboard1 _ _ _ _               = return ()
-
+-}
 ---------------------------------------------------------------------------------------------------
 -- Functions directing the atomic draw operations given a list of elements with absolute offsets --
 ---------------------------------------------------------------------------------------------------
