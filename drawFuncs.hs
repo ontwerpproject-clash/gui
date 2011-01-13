@@ -50,7 +50,7 @@ display pState func = do
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
     putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
-    putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    putStrLn $ show $ optimizeWires $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     drawElems [offsetElements func] pState
     color $ Color3 0 0 (1::GLfloat)
     drawWires routes
@@ -61,7 +61,7 @@ display pState func = do
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
-            routes = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+            routes = makeArrows $ optimizeWires $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
             -- circuitOffset = offsetElements func
 
 
@@ -89,10 +89,10 @@ keyboard func pState (Char 'r') Down _ _   = do
     color $ Color3 1 1 (1::GLfloat)
     drawElems [offsetElements func] pState
     color $ Color3 0 0 (1::GLfloat)
-    drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    drawWires $ makeArrows $ optimizeWires $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     --color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
-    print (resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func)
+    print (optimizeWires $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func)
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
@@ -110,7 +110,7 @@ keyboard func pState (Char 'l') Down _ _   = do
 	--wires of the longestPath to their position in the wire list
 	let wiresOfPath = (pathToPositions wires wiresToPaint)
 	--calculateWires
-	let completeWires = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wires
+	let completeWires = makeArrows $ optimizeWires $ simplifyWires $ calcRoutes $ wires
 	--paint the wires (the wires on the positions in the list wiresOfPath are drawn in red)
 	drawHelper completeWires wiresOfPath
 	
@@ -124,7 +124,7 @@ keyboard func pState (Char 'p') Down _ _   = do
 	let wiresOfPath = (pathToPositions wires wiresToPaint)
 	color $ Color3 1 0 (0::GLfloat)
 	--draws all the wires of the longest Path in red (but just those, so it is probably not on top of all the others old wires)
-	drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
+	drawWires $ makeArrows $ optimizeWires $ simplifyWires $ calcRoutes $ wiresToPaint
 	
 keyboard func pState _ _ _ _               = return ()	
 	
