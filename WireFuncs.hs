@@ -63,15 +63,16 @@ module WireFuncs where
 
   calcRoute :: Wire FromTo -> Route
   calcRoute wire = 
-       wireFinish end $ reduceYDist end $ reduceXDist end $ toCrossing end $ wireStart begin
+       wireFinish end $ reduceXDist end $ reduceYDist end $ wireStart begin --toCrossing end $ wireStart begin
           where 
               Wire _ _ _ (begin, end) = wire
+              (xf,yf) = end
+              (xb,yb) = begin
+
 
   -- Function for simplifying Wires, merging points where necessary
   simplifyWires :: [Route] -> [Route]
-  simplifyWires routes 
-    | routes == []  = routes
-    | otherwise     = (simplifyWire $ head routes) : (simplifyWires $ tail routes)
+  simplifyWires routes = map simplifyWire routes
 
   simplifyWire :: Route -> Route
   simplifyWire route@(p1:p2:route')
@@ -100,38 +101,53 @@ module WireFuncs where
                     (finishX,finishY) = head route
                     newRoute          = (finishX-0.05,finishY-0.05):(finishX,finishY):(finishX-0.05,finishY+0.05):route
 
+
   resolveCollisions :: [Route] -> [Route]
-  resolveCollisions routes 
-    | routes /= []  = (resolveWireSet (head routes) (tail routes)) : (resolveCollisions (tail routes))
-    | otherwise     = []
+  resolveCollisions routes  
+    | changed   = result 
+    | otherwise = resolveCollisions result
+                where 
+                   (result, changed) = reResolveCollisions routes False
+
+
+  reResolveCollisions :: [Route] -> Bool -> ([Route], Bool)
+  reResolveCollisions routes cF
+    | routes /= []  = ((nRoute : rres), (cF || cF_ || changeFlag))
+    | otherwise     = ([],cF)
+                    where 
+                      (rres, cF_)          = (reResolveCollisions (tail routes)) (cF||changeFlag)
+                      (nRoute, changeFlag) = (resolveWireSet (head routes) (tail routes) False)
   
   --Function changing the coordinates of one wire until no conflicts are detected, support function of resolveCollisions
-  resolveWireSet :: Route -> [Route] -> Route
-  resolveWireSet examined otherRoutes
-    | otherRoutes == []   = examined
-    | otherwise           = resolveWireSet (resolveSingleWires examined $ head otherRoutes) $ tail otherRoutes
+  resolveWireSet :: Route -> [Route] -> Bool -> (Route, Bool)
+  resolveWireSet examined otherRoutes cF
+    | otherRoutes == []   = (examined, cF)
+    | otherwise           = resolveWireSet sRoute (tail otherRoutes) (changeFlag || cF)
+                          where
+                            (sRoute, changeFlag) = (resolveSingleWires examined (head otherRoutes) cF)
   
   --Function Checking between single wires, support function of resolveWireSet. Recursively keeps calling resolveWirePart until the entire
   --Wire has been resolved, yielding a new wire, which does not conflict with the 2nd argument, the other wire, on any part of its path.
-  resolveSingleWires :: Route -> Route -> Route
-  resolveSingleWires (p1:p2:examined') other
-    | examined' == []    = [resolvedp1, resolvedp2]
-    | otherwise          = resolvedp1: (resolveSingleWires (resolvedp2:examined') other)
+  resolveSingleWires :: Route -> Route -> Bool -> (Route, Bool)
+  resolveSingleWires (p1:p2:examined') other cF
+    | examined' == []    = ([resolvedp1, resolvedp2], changeFlag)
+    | otherwise          = ((resolvedp1:result), (changeFlag || cF || changeFlag2))
         where
-          (resolvedp1, resolvedp2) = (resolveWirePart (p1,p2) other)
+          (result, changeFlag2) = (resolveSingleWires (resolvedp2:examined') other changeFlag)
+          ((resolvedp1, resolvedp2),changeFlag) = (resolveWirePart (p1,p2) other)
  
   -- Function checking a part of one wire against another wire, support function of resolveSingleWires.
-  resolveWirePart :: (CoordD, CoordD) -> Route -> (CoordD, CoordD)
+  resolveWirePart :: (CoordD, CoordD) -> Route -> ((CoordD, CoordD), Bool)
   resolveWirePart (p1, p2) (p3:other')
-    | other' == []                    = (p1,p2)
+    | other' == []                    = ((p1,p2),False)
     | (x == x2 && x2 == x3 && x3 == x4) && ((x <= x3 && x3 <= x2) ||
                                             (x >= x3 && x3 >= x2) ||
                                             (x <= x4 && x4 <= x2) ||
-                                            (x >= x4 && x4 >= x2)   ) = trace ("x conflict detected, changing... " ++ show p1 ++ " and " ++ show p2) (((x+0.05),y),((x2+0.05),y2))  
+                                            (x >= x4 && x4 >= x2)   ) = trace ("x conflict detected, changing... " ++ show p1 ++ " and " ++ show p2) ((((x+0.05),y),((x2+0.05),y2)),True)  
     | (y == y2 && y2 == y3 && y3 == y4) && ((y <= y3 && y3 <= y2) ||
                                             (y >= y3 && y3 >= y2) ||
                                             (y <= y4 && y4 <= y2) ||
-                                            (y >= y4 && y4 >= y2)   ) = trace ("y conflict detected, changing... " ++ show p1 ++ " and " ++ show p2) ((x,(y+0.05)),(x2,(y2+0.05)))
+                                            (y >= y4 && y4 >= y2)   ) = trace ("y conflict detected, changing... " ++ show p1 ++ " and " ++ show p2) (((x,(y+0.05)),(x2,(y2+0.05))),True)
     | otherwise                       = resolveWirePart (p1,p2) other'
       where
         (x,y) = p1
@@ -238,4 +254,3 @@ module WireFuncs where
   
   pathToPositionsHelper [] wiresToPaint currentElement = []
   pathToPositionsHelper (w:wires) wiresToPaint currentElement = if (containsWire2 wiresToPaint w) then currentElement:(pathToPositionsHelper wires wiresToPaint (currentElement+1)) else pathToPositionsHelper wires wiresToPaint (currentElement+1)
-	

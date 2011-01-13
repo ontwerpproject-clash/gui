@@ -225,11 +225,12 @@ module LayoutManager where
         False -> extractElementIdAndOffset fs (inoffs ++ ios, ws)
 
     setInnerOffsets :: ArchElem Offset -> [(Id, OffsetD)]
-    setInnerOffsets f@(Function id _ ins out (a,b) o)   = (id,(x,-y)) : (toId out, (maxX+0.5,-((y+maxY)/2))) : (map (combine (x-0.5,-y-0.5)) ins)
+    setInnerOffsets f@(Function id _ ins out (a,b) o)   = (id,(x,-y)) : (toId out, (maxX+0.05,-((y+maxY)/2))) : (divideWires (map convertPortToPortId ins) (x-0.05,y-0.05-step) step []) --   (map (combine (x-0.05,-y-0.5)) ins)
                                                       where
                                                         (x,y)        = (fromIntegral $ fst o, fromIntegral $ snd o)
                                                         fsf          = calcFuncSize a (0,0)
                                                         (maxX, maxY) = (fromIntegral $ (fst fsf), fromIntegral $ (snd fsf))
+                                                        step         = (maxY - y) / (fromIntegral ((length ins) + 1))
     setInnerOffsets (Operator id _ ins out o)     = [(id,(x,-y)) , (combine (x+0.8,-y-0.5) out) , (combine2 (x+0.22, -y-0.4) ingang1) , (combine2 (x+0.22, -y-0.6) ingang2)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
@@ -251,7 +252,7 @@ module LayoutManager where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
     
     -- Help function for setInnerOffsets, used to calculate at which point wires should intersect with the element.
-    -- First argument is a list of Ids, the second a length over which they have to be divided, and the 3rd a starting value.
+    -- First argument is a list of Ids, the second a starting value and the 3rd a step by which incrementations should be made.
     divideWires :: [Id] -> OffsetD -> Double -> [(Id, OffsetD)] -> [(Id, OffsetD)]
     divideWires [] _ _ r             = r
     divideWires (z:zs) (x, y) step r = divideWires zs (x, y - step) step ((z, (x, y)):r)

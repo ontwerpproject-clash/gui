@@ -10,6 +10,7 @@ import LayoutManager as LM
 import WireFuncs
 import System.Exit ( exitWith, ExitCode(ExitSuccess) )
 import LongestPath
+import System
 
 import ParseClash as AE
 
@@ -24,6 +25,7 @@ initPState = ProgramState {sc = (1/3),
 
 main :: IO ()
 main = do
+    (f:_) <- getArgs 
     let
       pState = initPState
       xyScale =  1
@@ -31,7 +33,7 @@ main = do
     createWindow "CLASH Visualisation Tool, pre-alpha"
     windowSize $= (Size (xWS pState) (yWS pState))
     scale (realToFrac $ sc pState) (realToFrac $ sc pState) (1::GLfloat)
-    func <- parseClashFile "Plus1.hs"--"muxTest.hs"
+    func <- parseClashFile f
     displayCallback $= display pState func
 --    keyboardMouseCallback $= (Just ( keyboard1 ))
     mainLoop
@@ -51,13 +53,15 @@ display pState func = do
     putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     drawElems [offsetElements func] pState
     color $ Color3 0 0 (1::GLfloat)
-    drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    drawWires routes
+    drawStartCircles routes pState
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
     keyboardMouseCallback $= (Just ( keyboard func pState))
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
+            routes = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
             -- circuitOffset = offsetElements func
 
 
@@ -169,8 +173,13 @@ drawFunction :: [ArchElem Offset] -> Coord -> ProgramState -> IO ()
 drawFunction innerElems (x,y) pState = do  loadIdentity
                                            scale sc_ sc_ (1::GLfloat)
                                            color $ Color3 1 1 (1::GLfloat)
-                                           rect (Vertex2 (realToFrac x-0.3) ((realToFrac y+0.3)::GLfloat)) 
-                                                (Vertex2 (x+x_+0.3) (y-y_-0.3))
+                                           rect (Vertex2 (realToFrac x-0.05) ((realToFrac y+0.05)::GLfloat)) 
+                                                (Vertex2 (x+x_+0.05) (y-y_-0.05))
+                                           color $ Color3 0 1 (0::GLfloat)
+                                           displayPoints [(x-0.05,y+0.05,(0::GLfloat)),
+                                                          (x-0.05,y-y_-0.05,(0::GLfloat)),
+                                                          (x+x_+0.05,y-y_-0.05,(0::GLfloat)),
+                                                          (x+x_+0.05,y+0.05,(0::GLfloat))] LineLoop
                                            where
                                              sc_     = realToFrac (sc pState)
                                              (xl,yl) = calcFuncSize innerElems (0,0)
@@ -230,6 +239,22 @@ drawRegister (x,y) = do  color $ Color3 0 1 (1::GLfloat)
                                         ]
                                         LineStrip
 
+drawStartCircles :: [Route] -> ProgramState -> IO ()
+drawStartCircles routes pstate = if routes /= []
+                                   then do drawStartCircle (head routes) pstate
+                                           drawStartCircles (tail routes) pstate
+                                   else return ()
+
+drawStartCircle :: Route -> ProgramState -> IO ()
+drawStartCircle route pstate = do  color $ Color3 0 0 (1::GLfloat)
+                                   translate $ Vector3 (realToFrac x) (realToFrac y) (0::GLfloat)
+                                   fillCircle 0.02
+                                   loadIdentity
+                                   scale sc_ sc_ (1::GLfloat)
+                                   where
+                                     (x,y) = last route
+                                     sc_ = realToFrac (sc pstate)                                        
+
 ------------------------------------------------------------------------------------------------------
 -- Support function to calculate the total number of elements to be rendered- this function is used --
 -- to make sure all functions are neatly rendered.                                                  --
@@ -270,7 +295,7 @@ drawRegister (x,y) = do  color $ Color3 0 1 (1::GLfloat)
 circlePoints :: Floating a => a -> Int -> [(a,a,a)]
 circlePoints radius number =
   [let alpha = 2 * pi * fromIntegral i / fromIntegral number
-   in (radius * sin alpha, radius * cos alpha, 0)
+   in (radius * sin alpha, radius * cos alpha, 0) 
   | i <- [1, 2 .. number]]
 
 circle :: GLfloat -> [(GLfloat,GLfloat,GLfloat)]
