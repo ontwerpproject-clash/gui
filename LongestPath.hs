@@ -9,11 +9,6 @@ lp1 aElem = do
 	let start=head  conversionList
 	let (a,b,c) = start
 	lp aElem a (a++"_funcOut")
-	--conversionList
---		where
---			(a,b,c) = start
-
-
 
 
 lp2 aElem = do
@@ -22,7 +17,7 @@ lp2 aElem = do
 	let (a,b,c) = func
 	let allLongestPaths= allLPS aElem (elements aElem) (a++"_funcOut")
 	let lP = longP allLongestPaths
-	if (lP>0) then allLongestPaths!!lP else []
+	if (lP>(-1)) then allLongestPaths!!lP else []
 
 allLPS aElem []        end = []
 allLPS aElem (e:elems) end = (lp aElem e end):(allLPS aElem elems end)
@@ -46,9 +41,10 @@ makeEdges gV [macc] li = makeEdges1 gV [macc] li
 
 
 --generate all edges in function id, by using the wires and add them to graph gr
+--needs to be changed for func in func
 makeEdges1 gr  ((Function id name ins out (fs, ws) a):es)  l = addWires gr ws l
 
---use wires to add an edge to the graph gr, by callind aEdge for all wires
+--use wires to add an edge to the graph gr, by calling aEdge for all wires
 addWires gr [] l = gr
 addWires gr (w:ws) l = addWires (aEdge gr w l) ws l
 
@@ -66,27 +62,29 @@ makeVertices1 (l:ls) gr = makeVertices1 ls (run_ gr $ insMapNodeM eleID)
 								where (eleID,realID, ports) = l
 
 
+inListToIDs []       =  []
+inListToIDs (l:list) = (fromOutToString l)++(inListToIDs list)
+								
+								
 --converts a archelem to a list of the form (id_elem, real_id_elem, [ports])
 --id_function is used to be able to split a function into an in- and outpart, to not have a cycle due to all functions starting and ending with the function itself
 toList func = toList1 [func] []
-toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, map convertToPortId ins):(id++"_funcOut",id, fromOutToString out):toList1 fs l  
-toList1 ((Operator id name insf out a):fs)  				l	= (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l 
+toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, inListToIDs ins):(id++"_funcOut",id, fromOutToString out):toList1 fs l 
+toList1 ((Operator id name insf out a):fs)  				l	= (id,id, fromOutToString out++inListToIDs insf):toList1 fs l 
 toList1 ((Literal id val out a):fs)         				l	= (id,id, fromOutToString out):toList1 fs l
-toList1 ((Mux id insf out inpf a):fs)      					l = (id,id, fromOutToString out++map convertToPortId insf):toList1 fs l
+toList1 ((Mux id insf out inpf a):fs)      					l = (id,id, fromOutToString out++inListToIDs insf):toList1 fs l   
 toList1 ((Register id insf out a):fs)       				l = (id,id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList1 fs l  
-toList1 []                                  				l = []
-
-
+toList1 []                                  				l = []		
 
 
 toList2 func = toList12 [func] []
-toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, map convertToPortId ins):(id, fromOutToString out):toList12 fs l  
-toList12 ((Operator id name insf out a):fs)  			  	l	= (id, fromOutToString out++map convertToPortId insf):toList12 fs l  
+toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, inListToIDs ins):(id, fromOutToString out):toList12 fs l  
+toList12 ((Operator id name insf out a):fs)  			  	l	= (id, fromOutToString out++inListToIDs insf):toList12 fs l  
 toList12 ((Literal id val out a):fs)         			  	l	= (id, fromOutToString out):toList12 fs l
-toList12 ((Mux id insf out inpf a):fs)      					l = (id, fromOutToString out++map convertToPortId insf):toList12 fs l
-toList12 ((Register id insf out a):fs)       			  	l = (id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList12 fs l 
+toList12 ((Mux id insf out inpf a):fs)      					l = (id, fromOutToString out++inListToIDs insf):toList12 fs l
+toList12 ((Register id insf out a):fs)       			  	l = (id, fromOutToString out++[(convertToPortId(head (fMay insf)))]):toList12 fs l --make convertToPortId -> fromOutToString?
 toList12 []                                  		  		l = []
-
+	
 elements func = elems1 [func] []
 elems1 ((Function id name ins out (fs, ws) a):es)   l = (id):elems1 fs l  
 elems1 ((Operator id name insf out a):fs)  			  	l	= (id):elems1 fs l  
@@ -217,7 +215,7 @@ containsNode (n:ns) s = if ( name==s ) then True else containsNode ns s
 						where 
 							(no, name) = n
 
---true if a specifig edge is present in the list of edges (ns)
+--true if a specific edge is present in the list of edges (ns)
 containsEdge:: [(String, String, a)] -> String -> String -> Bool
 containsEdge [] s     e = False
 containsEdge (n:ns) s e = if ( no1== s && no2==e) then True else containsEdge ns s e
@@ -227,7 +225,7 @@ containsEdge (n:ns) s e = if ( no1== s && no2==e) then True else containsEdge ns
 
 
 
---tackes a list of edges and a graph an returns a list of the labels of the nodes (nodes are based on ints and this returns the labels corresponding with the ints)
+--takes a list of edges and a graph an returns a list of the labels of the nodes (nodes are based on ints and this returns the labels corresponding with the ints)
 edgeNumToLab gr []     = []
 edgeNumToLab gr (e:es) = (head(fMay (lab gr e1)),head(fMay (lab gr e2)),v):edgeNumToLab gr es--the head, list thing due to fMay is somewhat ugly
 						where 
@@ -244,6 +242,7 @@ checkEdgesAndAdd1 :: Gr String Int -> String -> String -> Gr String Int
 checkEdgesAndAdd1 gr b e = run_ gr $ insMapEdgeM (b, e, 1)
 	-}
 	--probably easier to convert the label of the nodes to the node int and get rid of the uglye edgenumtolables
+	--take a graph, String beginId and String endId and adds the edge beginId->endId (if not allready present)
 checkEdgesAndAdd :: Gr String Int -> String -> String -> Gr String Int
 checkEdgesAndAdd gr b e = do
 		let edges=labEdges gr
