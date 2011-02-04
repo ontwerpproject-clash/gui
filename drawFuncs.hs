@@ -15,11 +15,13 @@ import System
 import ParseClash as AE
 
 data ProgramState = ProgramState {sc :: Float,
+                                  xPan,yPan :: Float,
                                   xWS :: GLsizei,
                                   yWS :: GLsizei
                                   }
 
-initPState = ProgramState {sc = (1/3), 
+initPState = ProgramState {sc = (1/3),
+                          xPan = (-1), yPan = 1,
                           xWS = 600, 
                           yWS = 600}
 
@@ -29,11 +31,13 @@ main = do
     let
       pState = initPState
       xyScale =  1
+      convFromState val = realToFrac $ val pState
+
+    func <- parseClashFile f
     getArgsAndInitialize
     createWindow "CLASH Visualisation Tool, pre-alpha"
     windowSize $= (Size (xWS pState) (yWS pState))
-    scale (realToFrac $ sc pState) (realToFrac $ sc pState) (1::GLfloat)
-    func <- parseClashFile f
+    scale (convFromState sc) (convFromState sc) (1::GLfloat)
     displayCallback $= display pState func
 --    keyboardMouseCallback $= (Just ( keyboard1 ))
     mainLoop
@@ -46,11 +50,10 @@ type Coord = (GLfloat, GLfloat)
 ----------------------------------------------------------------------------------------------------------------------------
 --display :: ProgramState -> IO ()
 display pState func = do
-    --func <- parseClashFile "Plus1.hs"
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
-    putStrLn (show $ simplifyWires $ calcRoutes (extractWires (offsetElements func)))
-    putStrLn $ show $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    putStrLn $ show simple
+    putStrLn $ show collisionResolved
     drawElems [offsetElements func] pState
     color $ Color3 0 0 (1::GLfloat)
     drawWires routes
@@ -61,7 +64,12 @@ display pState func = do
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
-            routes = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+            routes = makeArrows collisionResolved
+            
+            offsetElems = offsetElements func
+            wires = extractWires offsetElems
+            simple = simplifyWires $ calcRoutes wires
+            collisionResolved = resolveCollisions simple
             -- circuitOffset = offsetElements func
 
 
@@ -125,7 +133,37 @@ keyboard func pState (Char 'p') Down _ _   = do
 	color $ Color3 1 0 (0::GLfloat)
 	--draws all the wires of the longest Path in red (but just those, so it is probably not on top of all the others old wires)
 	drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
-	
+
+keyboard func pState (Char 'a') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      x = xPan pState
+      x' = x-0.1
+      newPState = pState{xPan=x'}
+keyboard func pState (Char 'd') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      x = xPan pState
+      x' = x+0.1
+      newPState = pState{xPan=x'}
+keyboard func pState (Char 'w') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      y = yPan pState
+      y' = y+0.1
+      newPState = pState{yPan=y'}
+keyboard func pState (Char 's') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      y = yPan pState
+      y' = y-0.1
+      newPState = pState{yPan=y'}
+
+
 keyboard func pState _ _ _ _               = return ()	
 	
 
@@ -162,8 +200,8 @@ drawElem (Function _ _ _ _ (innerElems , _ ) (x,y)) pState = do drawFunction inn
                                                                 drawElems innerElems pState
 drawElem (Operator _ name _ _ (x,y))                pState = drawOperator name (toOffset (x,y)) pState
 drawElem (Literal _ name _ (x,y))                   pState = drawLiteral name (toOffset (x,y)) pState
-drawElem (Mux _ _ _ _ (x,y))                        pState = drawMux (toOffset (x,y))
-drawElem (Register _ _ _ (x,y))                     pState = drawRegister (toOffset (x,y))
+drawElem (Mux _ _ _ _ (x,y))                        pState = drawMux (toOffset (x,y)) pState
+drawElem (Register _ _ _ (x,y))                     pState = drawRegister (toOffset (x,y)) pState
 
 -----------------------------------------------------------------------------------------------------
 -- Drawing Functions for all atomic elements (Function, Operator, Literal, Mux, Register and wires --
@@ -172,6 +210,7 @@ drawElem (Register _ _ _ (x,y))                     pState = drawRegister (toOff
 drawFunction :: [ArchElem Offset] -> Coord -> ProgramState -> IO ()
 drawFunction innerElems (x,y) pState = do  loadIdentity
                                            scale sc_ sc_ (1::GLfloat)
+                                           translatePannedDefault pState
                                            color $ Color3 1 1 (1::GLfloat)
                                            rect (Vertex2 (realToFrac x-0.05) ((realToFrac y+0.05)::GLfloat)) 
                                                 (Vertex2 (x+x_+0.05) (y-y_-0.05))
@@ -180,6 +219,8 @@ drawFunction innerElems (x,y) pState = do  loadIdentity
                                                           (x-0.05,y-y_-0.05,(0::GLfloat)),
                                                           (x+x_+0.05,y-y_-0.05,(0::GLfloat)),
                                                           (x+x_+0.05,y+0.05,(0::GLfloat))] LineLoop
+                                           loadIdentity
+                                           scale sc_ sc_ (1::GLfloat)
                                            where
                                              sc_     = realToFrac (sc pState)
                                              (xl,yl) = calcFuncSize innerElems (0,0)
@@ -188,7 +229,7 @@ drawFunction innerElems (x,y) pState = do  loadIdentity
 
 drawOperator :: AE.Name -> Coord -> ProgramState -> IO ()
 drawOperator name (x,y) pState = do  color $ Color3 1 0 (0::GLfloat)
-                                     translate $ Vector3 (x+0.5) (y-0.5) (0::GLfloat)
+                                     translatePanned pState $ Vector3 (x+0.5) (y-0.5) (0::GLfloat)
                                      fillCircle 0.3
                                      color $ Color3 0 0 (0::GLfloat)
                                      renderCircle 0.3
@@ -199,7 +240,7 @@ drawOperator name (x,y) pState = do  color $ Color3 1 0 (0::GLfloat)
                                         sca = realToFrac ((0.006*sc_)/fact)
                                      color $ Color3 0 0 (0::GLfloat)
                                      scale sca sca (1::GLfloat)
-                                     translate (Vector3  ((x/sca*sc_)+(0.2/sca*sc_)+(0.03*fact/sca*sc_)) 
+                                     translatePannedText pState sca (Vector3  ((x/sca*sc_)+(0.2/sca*sc_)+(0.03*fact/sca*sc_))
                                                          ((y/sca*sc_)-(0.85/sca*sc_)+(0.03*fact/sca*sc_)) 
                                                          (0::GLfloat))
                                      renderString Roman name
@@ -208,6 +249,7 @@ drawOperator name (x,y) pState = do  color $ Color3 1 0 (0::GLfloat)
                                             
 drawLiteral :: AE.Name -> Coord -> ProgramState -> IO ()
 drawLiteral name (x,y) pState = do  color $ Color3 0 1 (0::GLfloat)
+                                    translatePannedDefault pState
                                     rect (Vertex2 (x+0.4) (y-0.2)) (Vertex2 (x+0.6) ((y-0.8)::GLfloat))
                                     loadIdentity
                                     let
@@ -216,28 +258,30 @@ drawLiteral name (x,y) pState = do  color $ Color3 0 1 (0::GLfloat)
                                         sca = realToFrac ((0.002*sc_)/fact)
                                     color $ Color3 0 0 (0::GLfloat)
                                     scale sca sca (1::GLfloat)
-                                    translate (Vector3  ((x/sca*sc_)+(0.45/sca*sc_)+(0.01*fact/sca*sc_))
+                                    translatePannedText pState sca (Vector3  ((x/sca*sc_)+(0.45/sca*sc_)+(0.01*fact/sca*sc_))
                                                         ((y/sca*sc_)-(0.75/sca*sc_)+(0.05*fact/sca*sc_))
                                                          (0::GLfloat))
                                     renderString Roman name
                                     loadIdentity
                                     scale sc_ sc_ (1::GLfloat)
 
-drawMux :: Coord -> IO ()
-drawMux (x,y) = do color $ Color3 1 0 (0::GLfloat)
-                   rect (Vertex2 (x+0.2) (y-0.2)) (Vertex2 (x+0.8) ((y-0.8)::GLfloat))
-                   color $ Color3 0 0 (0::GLfloat)
-                   displayPoints [(x+0.1, y-0.5, 0), (x+0.5, y-0.5,0)] LineStrip
+drawMux :: Coord -> ProgramState -> IO ()
+drawMux (x,y) pState = do color $ Color3 1 0 (0::GLfloat)
+                          translatePannedDefault pState
+                          rect (Vertex2 (x+0.2) (y-0.2)) (Vertex2 (x+0.8) ((y-0.8)::GLfloat))
+                          color $ Color3 0 0 (0::GLfloat)
+                          displayPoints [(x+0.1, y-0.5, 0), (x+0.5, y-0.5,0)] LineStrip
 
-drawRegister :: Coord -> IO ()
-drawRegister (x,y) = do  color $ Color3 0 1 (1::GLfloat)
-                         rect (Vertex2 (x+0.3) (y-0.2)) (Vertex2 (x+0.7) ((y-0.8)::GLfloat))
-                         color $ Color3 0 0 (0::GLfloat)
-                         displayPoints  [ (x+0.3, y-0.7, 0),
-                                          (x+0.4, y-0.6, 0),
-                                          (x+0.3, y-0.5, 0)
-                                        ]
-                                        LineStrip
+drawRegister :: Coord -> ProgramState -> IO ()
+drawRegister (x,y) pState = do color $ Color3 0 1 (1::GLfloat)
+                               translatePannedDefault pState
+                               rect (Vertex2 (x+0.3) (y-0.2)) (Vertex2 (x+0.7) ((y-0.8)::GLfloat))
+                               color $ Color3 0 0 (0::GLfloat)
+                               displayPoints  [ (x+0.3, y-0.7, 0),
+                                                (x+0.4, y-0.6, 0),
+                                                (x+0.3, y-0.5, 0)
+                                              ]
+                                              LineStrip
 
 drawStartCircles :: [Route] -> ProgramState -> IO ()
 drawStartCircles routes pstate = if routes /= []
@@ -247,7 +291,7 @@ drawStartCircles routes pstate = if routes /= []
 
 drawStartCircle :: Route -> ProgramState -> IO ()
 drawStartCircle route pstate = do  color $ Color3 0 0 (1::GLfloat)
-                                   translate $ Vector3 (realToFrac x) (realToFrac y) (0::GLfloat)
+                                   translatePanned pstate $ Vector3 (realToFrac x) (realToFrac y) (0::GLfloat)
                                    fillCircle 0.02
                                    loadIdentity
                                    scale sc_ sc_ (1::GLfloat)
@@ -318,3 +362,22 @@ renderCircle r = displayPoints (circle r) LineLoop
 
 toOffset :: (Int, Int) -> (GLfloat,GLfloat)
 toOffset (xOffset, yOffset) = ((realToFrac xOffset), -(realToFrac yOffset))
+
+
+
+-- Support functions for panning, used in the draw* functions, instead of the normal translate function
+-- translate to vector + some offset from the state
+translatePanned pState (Vector3 x y z)
+  = translate $ Vector3 (x+xOff) (y+yOff) z
+  where
+    xOff = xPan pState
+    yOff = yPan pState
+
+translatePannedDefault pState = translatePanned pState $ Vector3 0 0 0
+
+translatePannedText pState sca (Vector3 x y z)
+  = translate $ Vector3 (x+xOff) (y+yOff) z
+  where
+    sc_ = realToFrac (sc pState)
+    xOff = (xPan pState) / sca * sc_
+    yOff = (yPan pState) / sca * sc_
