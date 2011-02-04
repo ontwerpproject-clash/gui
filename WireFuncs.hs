@@ -84,7 +84,7 @@ module WireFuncs where
         (x1,y1) = p1
         (x2,y2) = p2
         (x3,y3) = head route'
-
+  simplifyWire route@(_:[]) = route
 
   -- Functions for detecting and resolving of wire collisions
   --
