@@ -16,29 +16,108 @@ import ParseClash as AE
 
 data ProgramState = ProgramState {sc :: Float,
                                   xPan,yPan :: Float,
+                                  elementsSaved :: [ArchElem Offset], routesSaved :: [Route],
                                   xWS :: GLsizei,
                                   yWS :: GLsizei
                                   }
 
 initPState = ProgramState {sc = (1/3),
                           xPan = (-1), yPan = 1,
+                          elementsSaved = [], routesSaved = [],
                           xWS = 600, 
                           yWS = 600}
+myparseClashFile :: FilePath -> IO (ArchElem ())
+myparseClashFile "blaat" = myparseClashFile2 ""
+myparseClashFile f = parseClashFile f
+
+myparseClashFile2 _ = return $ 
+    Function "cpuComponent_0" Nothing [MultiPort "addrszjQH2" [SinglePort "addrszjQH2.A",
+                                                               SinglePort "addrszjQH2.B"]]
+                                      (SinglePort "reszjR4zjR42")
+    (
+        [Operator "vlastoperatorId28" "vlast" [SinglePort "newPortId30"]
+                                              (SinglePort "newPortId29") (()),
+         Register "NSimple (Basic \"szjQJ2\")\"31\"" (Just (SinglePort "regIn\"32\"")) (SinglePort "regOut\"33\"") (()),
+         Operator "singletonoperatorId1" "singleton" [SinglePort "newPortId3"]
+                                                     (SinglePort "newPortId2") (()),
+             Function "fuComponent_1" Nothing [SinglePort "paramzjS1zjS12",
+                                               MultiPort "paramzjS3zjS32" [SinglePort "paramzjS3zjS32.A",
+                                                                           SinglePort "paramzjS3zjS32.B"]]
+                                              (SinglePort "casevalzjS9zjSr3")
+             (
+                 [Operator "resizeoperatorId4" "resize" [SinglePort "newPortId12",
+                                                         SinglePort "newPortId13"]
+                                                        (SinglePort "newPortId5") (()),
+                  Operator "operatorId6" "*" [SinglePort "newPortId7",
+                                              SinglePort "newPortId8"]
+                                             (SinglePort "newPortId9") (()),
+                  Literal "litoperatorId10" "16" (SinglePort "newPortId11") (()),
+                  Operator "znoperatorId14" "zn" [SinglePort "newPortId16",
+                                                  SinglePort "newPortId17"]
+                                                 (SinglePort "newPortId15") (()),
+                  Operator "znoperatorId18" "zn" [SinglePort "newPortId20",
+                                                  SinglePort "newPortId21"]
+                                                 (SinglePort "newPortId19") (())]
+             ,
+                 [Wire (Just "casevalzjS9zjSr3") "newPortId5" "casevalzjS9zjSr3" (()),
+                  Wire (Just "a function call wire") "newPortId9" "newPortId12" (()),
+                  Wire (Just "a function call wire") "newPortId11" "newPortId13" (()),
+                  Wire (Just "argzjSJzjSJ2") "newPortId15" "newPortId7" (()),
+                  Wire (Just "a function call wire") "paramzjS1zjS12" "newPortId16" (()),
+                  Wire (Just "a1zjSt3") "paramzjS3zjS32.A" "newPortId17" (()),
+                  Wire (Just "argzjSLzjSL2") "newPortId19" "newPortId8" (()),
+                  Wire (Just "a function call wire") "paramzjS1zjS12" "newPortId20" (()),
+                  Wire (Just "a2zjSs3") "paramzjS3zjS32.B" "newPortId21" (())]
+             )
+             (()),
+         Operator "zpzgoperatorId22" "zpzg" [SinglePort "newPortId24",
+                                             SinglePort "newPortId25"]
+                                            (SinglePort "newPortId23") (()),
+         Literal "litoperatorId26" "0" (SinglePort "newPortId27") (())]
+    ,
+        [Wire (Just "outzjQL2") "newPortId29" "reszjR4zjR42" (()),
+         Wire (Just "szjQJ2") "regOut\"33\"" "newPortId30" (()),
+         Wire (Just "szqzjQX2") "newPortId2" "regIn\"32\"" (()),
+         Wire (Just "argzjRazjRa3") "casevalzjS9zjSr3" "newPortId3" (()),
+         Wire (Just "inputszjQT2") "newPortId23" "paramzjS1zjS12" (()),
+         Wire (Just "xzjQP2") "newPortId27" "newPortId24" (()),
+         Wire (Just "szjQJ2") "regOut\"33\"" "newPortId25" (()),
+         Wire (Just "argzjR8zjR82") "addrszjQH2" "paramzjS3zjS32" (())]
+    )
+    (())
+
 
 main :: IO ()
 main = do
     (f:_) <- getArgs 
+    func <- myparseClashFile f
     let
-      pState = initPState
+      elem = offsetElements func
+      routes = makeArrows collisionResolved
+      collisionResolved = resolveCollisions $ simplifyWires $ calcRoutes wires
+      wires = extractWires elem
+
+      pState :: ProgramState
+      pState = initPState{elementsSaved=[elem],routesSaved=routes}
       xyScale =  1
       convFromState val = realToFrac $ val pState
 
-    func <- parseClashFile f
+    {-
+    let
+    putStrLn "elems:"
+    putStrLn $ show offsetElems
+    putStrLn "wires:"
+    putStrLn $ show wires
+    putStrLn "routes:"
+    putStrLn $ show routes
+    putStrLn "simple:"
+    putStrLn $ show simple
+    -}
     getArgsAndInitialize
     createWindow "CLASH Visualisation Tool, pre-alpha"
     windowSize $= (Size (xWS pState) (yWS pState))
     scale (convFromState sc) (convFromState sc) (1::GLfloat)
-    displayCallback $= display pState func
+    displayCallback $= (display pState elem)
 --    keyboardMouseCallback $= (Just ( keyboard1 ))
     mainLoop
  
@@ -48,29 +127,26 @@ type Coord = (GLfloat, GLfloat)
 -- Main Display function. Does the following: Clear the screen, set the color to white, calculate the grid, set the scale --
 -- of the grid to proper levels, draw the elements and commit to the screen (flush).                                      --
 ----------------------------------------------------------------------------------------------------------------------------
---display :: ProgramState -> IO ()
+display :: ProgramState -> ArchElem Offset -> IO ()
 display pState func = do
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
-    putStrLn $ show simple
-    putStrLn $ show collisionResolved
-    drawElems [offsetElements func] pState
+    drawElems elems pState
     color $ Color3 0 0 (1::GLfloat)
-    drawWires routes
     drawStartCircles routes pState
+    translatePannedDefault pState
+    drawWires routes
+    loadIdentity
+    scale sc_ sc_ (1::GLfloat)
     color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
     keyboardMouseCallback $= (Just ( keyboard func pState))
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
-            routes = makeArrows collisionResolved
-            
-            offsetElems = offsetElements func
-            wires = extractWires offsetElems
-            simple = simplifyWires $ calcRoutes wires
-            collisionResolved = resolveCollisions simple
-            -- circuitOffset = offsetElements func
+            routes = routesSaved pState
+            elems = elementsSaved pState
+            sc_ = sc pState
 
 
 keyboard func pState (Char '\27') Down _ _ = exitWith ExitSuccess  --press "esc" to quit
@@ -95,12 +171,12 @@ keyboard func pState (Char '-') Down _ _   = do
 keyboard func pState (Char 'r') Down _ _   = do
     clear [ColorBuffer]
     color $ Color3 1 1 (1::GLfloat)
-    drawElems [offsetElements func] pState
+    --drawElems [offsetElements func] pState
     color $ Color3 0 0 (1::GLfloat)
-    drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
+    --drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func
     --color $ Color3 0 1 (0::GLfloat)
     renderPrimitive Points $ makeVertexes points
-    print (resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func)
+    --print (resolveCollisions $ simplifyWires $ calcRoutes $ extractWires $ offsetElements func)
     flush
         where
             points = [(x,y,0) | x <-[-10..10] , y<-[-10..10]]
@@ -120,6 +196,7 @@ keyboard func pState (Char 'l') Down _ _   = do
 	--calculateWires
 	let completeWires = makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wires
 	--paint the wires (the wires on the positions in the list wiresOfPath are drawn in red)
+	translatePannedDefault pState
 	drawHelper completeWires wiresOfPath
 	
 keyboard func pState (Char 'p') Down _ _   = do 	
@@ -134,6 +211,7 @@ keyboard func pState (Char 'p') Down _ _   = do
 	--draws all the wires of the longest Path in red (but just those, so it is probably not on top of all the others old wires)
 	drawWires $ makeArrows $ resolveCollisions $ simplifyWires $ calcRoutes $ wiresToPaint
 
+-- View panning with wasd
 keyboard func pState (Char 'a') Down _ _   = do 
     displayCallback $= display newPState func
     postRedisplay Nothing
@@ -161,6 +239,36 @@ keyboard func pState (Char 's') Down _ _   = do
     where
       y = yPan pState
       y' = y-0.1
+      newPState = pState{yPan=y'}
+
+-- Fast view panning with shift+wasd
+keyboard func pState (Char 'A') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      x = xPan pState
+      x' = x-0.3
+      newPState = pState{xPan=x'}
+keyboard func pState (Char 'D') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      x = xPan pState
+      x' = x+0.3
+      newPState = pState{xPan=x'}
+keyboard func pState (Char 'W') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      y = yPan pState
+      y' = y+0.3
+      newPState = pState{yPan=y'}
+keyboard func pState (Char 'S') Down _ _   = do 
+    displayCallback $= display newPState func
+    postRedisplay Nothing
+    where
+      y = yPan pState
+      y' = y-0.3
       newPState = pState{yPan=y'}
 
 
