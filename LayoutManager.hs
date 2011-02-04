@@ -231,11 +231,12 @@ module LayoutManager where
                                                         fsf          = calcFuncSize a (0,0)
                                                         (maxX, maxY) = (fromIntegral $ (fst fsf), fromIntegral $ (snd fsf))
                                                         step         = (maxY - y) / (fromIntegral ((length ins) + 1))
-    setInnerOffsets (Operator id _ ins out o)     = [(id,(x,-y)) , (combine (x+0.8,-y-0.5) out) , (combine2 (x+0.22, -y-0.4) ingang1) , (combine2 (x+0.22, -y-0.6) ingang2)]
+    setInnerOffsets (Operator id _ ins out o)     = (id,(x,-y)):(combine (x+0.8,-y-0.5) out) : newIns
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
-                        ingang1 = convertPortToPortId $ head ins
-                        ingang2 = convertPortToPortId $ head $ tail ins
+                        step    = 0.2 / (fromIntegral ((length ins) + 1))
+                        newIns  = divideWires (map convertPortToPortId ins) (x+0.22, - y - 0.4 - step) step []
+
     setInnerOffsets (Literal id _ out o)          = [(id,(x,-y)) , (combine (x+0.6,-y-0.5) out)]
                     where
                         (x,y)   = (fromIntegral $ fst o, fromIntegral $ snd o)
