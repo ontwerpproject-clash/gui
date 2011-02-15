@@ -4,6 +4,7 @@ import Data.Graph.Inductive
 import Data.Graph.Inductive.Graph
 import ParseClash as AE
 
+
 lp1 aElem = do
 	let conversionList = (toList aElem)
 	let start=head  conversionList
@@ -31,19 +32,34 @@ longPHelper (l:list) curElement longest lengthLongest =  if (length l>=lengthLon
 --call is not that efficient, couple of things are computed multiple times, change to do and everything that is computed multiple times in a let
 lp aElem begin end= do
 	let conversionList = (toList aElem)
-	let searchGraph = (makeEdges (makeVertices conversionList) [aElem] conversionList)
+	let searchGraph = (makeEdges2 (makeVertices conversionList) [aElem] conversionList)
 	let lpath= longest (calcPathLengths searchGraph (remEmptyPaths (pathList searchGraph (idToNodeNr searchGraph begin) (idToNodeNr searchGraph end))))
 	idsToRealIDs (pathNrsToIds searchGraph lpath) conversionList
 
 
 ----------------------------------------- GRAPH CREATION -----------------------------------------
-makeEdges gV [macc] li = makeEdges1 gV [macc] li
+makeEdges gV [macc] li = makeEdges2 gV [macc] li
+
+makeEdges2 gr  f  l = do
+  let aW = allWires gr f  l
+  addWires gr aW l
+  
+allWires gr  ((Function id name ins out (fs, ws) a):es)  l = ws++makealtWires fs ws l++makealtWires es gr l
+makealtWires ((Function id name ins out (fs, ws) a):es)  gr l = ws++makealtWires es gr l++makealtWires fs gr l
+makealtWires ((Operator id name insf out a):fs)  				gr	l= makealtWires fs gr l
+makealtWires ((Literal id val out a):fs)         				gr	l= makealtWires fs gr l
+makealtWires ((Mux id insf out inpf a):fs)      				gr l = makealtWires fs gr  l
+makealtWires ((Register id insf out a):fs)       				gr l= makealtWires fs gr l
+makealtWires []                                  				gr l= []	
 
 
 --generate all edges in function id, by using the wires and add them to graph gr
 --needs to be changed for func in func
-makeEdges1 gr  ((Function id name ins out (fs, ws) a):es)  l = addWires gr ws l
-
+{-makeEdges1 gr  ((Function id name ins out (fs, ws) a):es)  l = do 
+      let fWires=addWires gr ws l
+      let eWires=makealtWires fs fWires l --es gr l --has to do one for es aswell
+      fWires --fWires:eWires
+-}
 --use wires to add an edge to the graph gr, by calling aEdge for all wires
 addWires gr [] l = gr
 addWires gr (w:ws) l = addWires (aEdge gr w l) ws l
@@ -69,7 +85,7 @@ inListToIDs (l:list) = (fromOutToString l)++(inListToIDs list)
 --converts a archelem to a list of the form (id_elem, real_id_elem, [ports])
 --id_function is used to be able to split a function into an in- and outpart, to not have a cycle due to all functions starting and ending with the function itself
 toList func = toList1 [func] []
-toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, inListToIDs ins):(id++"_funcOut",id, fromOutToString out):toList1 fs l 
+toList1 ((Function id name ins out (fs, ws) a):es)  l = (id,id, inListToIDs ins):(id++"_funcOut",id, fromOutToString out):(toList1 fs l )++toList1 es l
 toList1 ((Operator id name insf out a):fs)  				l	= (id,id, fromOutToString out++inListToIDs insf):toList1 fs l 
 toList1 ((Literal id val out a):fs)         				l	= (id,id, fromOutToString out):toList1 fs l
 toList1 ((Mux id insf out inpf a):fs)      					l = (id,id, fromOutToString out++inListToIDs insf):toList1 fs l   
@@ -78,7 +94,7 @@ toList1 []                                  				l = []
 
 
 toList2 func = toList12 [func] []
-toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, inListToIDs ins):(id, fromOutToString out):toList12 fs l  
+toList12 ((Function id name ins out (fs, ws) a):es)   l = (id, inListToIDs ins):(id, fromOutToString out):(toList12 fs l)++toList12 es l
 toList12 ((Operator id name insf out a):fs)  			  	l	= (id, fromOutToString out++inListToIDs insf):toList12 fs l  
 toList12 ((Literal id val out a):fs)         			  	l	= (id, fromOutToString out):toList12 fs l
 toList12 ((Mux id insf out inpf a):fs)      					l = (id, fromOutToString out++inListToIDs insf):toList12 fs l
